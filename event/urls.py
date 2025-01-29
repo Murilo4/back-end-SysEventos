@@ -21,6 +21,8 @@ from .views.event.delete_event import delete_event
 from .views.event.get_event_statistics import get_event_stats
 from .views.event.start_event import start_event
 from .views.event.end_event import end_event
+from .views.event_user.get_event_to_user import get_event_user
+from .views.event_user.get_event_to_user import get_event_active
 from .views.event.get_event_and_questions import get_event_and_questions
 from .views.questions.create_question import create_question
 from .views.questions.update_question import update_question
@@ -83,6 +85,10 @@ urlpatterns = [
          end_event, name="start-event"),
     path('get-event-stats/<int:eventId>/',
          get_event_stats, name="get_event_stats"),
+    path('get-event-user/<int:eventId>/',
+         get_event_user, name="get_event_user"),
+    path('get-event-active/<int:eventId>/',
+         get_event_active, name="get_event_user"),
 
     # question
     path('create-question/<int:eventId>/',
