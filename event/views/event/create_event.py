@@ -62,21 +62,22 @@ def create_event(request):
     horario_ini = request.data.get("horarioIni")
     horario_final = request.data.get("horarioFinal")
     descricao = request.data.get("description")
-    photo = request.data.get("photo")
+    participants = request.data.get('participants')
+    photo = request.data.get("photo", None)
 
     event = {
         "data": data,
         "horario_inicio": horario_ini,
         "horario_final": horario_final,
         "descricao": descricao,
-        "photo": photo,  # Aqui estamos passando o caminho da foto no servidor
+        "photo": photo,
+        "participantes": participants,
         "event_creator": user_id
     }
 
     try:
         with transaction.atomic():
             new_event = CreateEvent(data=event)
-            print("salvou eu acho")
             if new_event.is_valid(raise_exception=True):
                 event_data = new_event.save()
                 dt = f'http://127.0.0.1:3000/event/invitation/{event_data.id}'

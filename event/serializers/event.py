@@ -5,8 +5,8 @@ from ..models import Event
 class CreateEvent(serializers.ModelSerializer):
     class Meta:
         model = Event
-        fields = ['id', 'data', 'horario_inicio', 'horario_final',
-                  'descricao', 'photo', 'event_creator']
+        fields = ['id', 'data', 'participantes', 'horario_inicio',
+                  'horario_final', 'descricao', 'photo', 'event_creator']
 
     def create(self, validated_data):
         event = Event(**validated_data)
@@ -28,7 +28,7 @@ class CreateQrCode(serializers.ModelSerializer):
 class UpdateEvent(serializers.ModelSerializer):
     class Meta:
         model = Event
-        fields = ['data', 'horario_inicio', 'horario_final',
+        fields = ['data', 'horario_inicio', 'participantes', 'horario_final',
                   'descricao', 'photo']
 
     def update(self, instance, validated_data):
@@ -40,6 +40,8 @@ class UpdateEvent(serializers.ModelSerializer):
             'horario_final', instance.horario_final)
         instance.descricao = validated_data.get(
             'descricao', instance.descricao)
+        instance.participantes = validated_data.get(
+            'participantes', instance.participantes)
         instance.photo = validated_data.get(
             'photo', instance.photo)
 

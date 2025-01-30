@@ -6,6 +6,7 @@ import jwt
 from django.conf import settings
 from ...models import Event, Names, NormalUser, UserName
 from ...serializers.event import UpdateEvent
+from django.db import transaction
 from ...serializers.Names import CreateNames, CreateUserNameEvent
 from dotenv import load_dotenv
 load_dotenv()
@@ -54,104 +55,107 @@ def update_event(request, eventId):
     horario_ini = request.data.get("horarioIni")
     horario_final = request.data.get("horarioFinal")
     descricao = request.data.get("description")
+    participants = request.data.get('participants')
     photo = request.data.get("photo")
 
     event = {
             "data": data,
             "horario_inicio": horario_ini,
             "horario_final": horario_final,
-            "descricao": descricao
+            "descricao": descricao,
+            "participantes": participants
         }
 
     old_photo = event_db.photo.name if event_db.photo else None
+    with transaction.atomic():
+        if photo:
+            if old_photo:
+                old_photo_path = os.path.join(settings.MEDIA_ROOT, old_photo)
+                if os.path.exists(old_photo_path):
+                    os.remove(old_photo_path)
 
-    if photo:
-        if old_photo:
-            old_photo_path = os.path.join(settings.MEDIA_ROOT, old_photo)
-            if os.path.exists(old_photo_path):
-                os.remove(old_photo_path)
+            event = {
+                "data": data,
+                "horario_inicio": horario_ini,
+                "horario_final": horario_final,
+                "descricao": descricao,
+                "participantes": participants,
+                "photo": photo
+            }
+        elif not photo:
+            event_db.photo = old_photo
 
-        event = {
-            "data": data,
-            "horario_inicio": horario_ini,
-            "horario_final": horario_final,
-            "descricao": descricao,
-            "photo": photo
-        }
-    elif not photo:
-        event_db.photo = old_photo
+        update_event = UpdateEvent(event_db, data=event, partial=True)
+        if update_event.is_valid(raise_exception=True):
+            update_event.save()
+        else:
+            return JsonResponse({"success": False,
+                                "message": "Erro inesperado"},
+                                status=status.HTTP_400_BAD_REQUEST)
 
-    update_event = UpdateEvent(event_db, data=event, partial=True)
-    if update_event.is_valid():
-        update_event.save()
-    else:
-        return JsonResponse({"success": False,
-                             "message": "Erro inesperado"},
-                            status=status.HTTP_400_BAD_REQUEST)
-
-    # Names handling
-    username_list = UserName.objects.filter(
-        event_id=event_id).order_by('create_order')
-    names = []
-    for username in username_list:
-        try:
-            name_obj = Names.objects.get(id=username.name_id)
-            names.append(name_obj.name)
-        except Names.DoesNotExist:
-            continue
-
-    full_name_from_db = " ".join(names).lower().strip()
-    update_name = event_name.lower().strip()
-
-    if update_name != full_name_from_db:
-        db_name = full_name_from_db.split()
-        name_list = update_name.split()
-
-        new_names = [name for name in name_list if name not in db_name]
-
-        UserName.objects.filter(event_id=event_id).delete()
-        referencias = []
-        for new_name in new_names:
+        # Names handling
+        username_list = UserName.objects.filter(
+            event_id=event_id).order_by('create_order')
+        names = []
+        for username in username_list:
             try:
-                name_obj = Names.objects.get(name=new_name)
-                referencias.append(name_obj.id)
+                name_obj = Names.objects.get(id=username.name_id)
+                names.append(name_obj.name)
             except Names.DoesNotExist:
-                name_data = {"name": new_name}
-                serializer = CreateNames(data=name_data)
-                if serializer.is_valid():
-                    new_name_obj = serializer.save()
-                    referencias.append(new_name_obj.id)
-                else:
-                    return JsonResponse({'success': False,
-                                         'message': 'Erro ao criar novo nome',
-                                         'error': serializer.errors},
-                                        status=status.HTTP_400_BAD_REQUEST)
+                continue
 
-        order = 1
-        if referencias:
-            for referencia in referencias:
+        full_name_from_db = " ".join(names).lower().strip()
+        update_name = event_name.lower().strip()
+
+        if update_name != full_name_from_db:
+            db_name = full_name_from_db.split()
+            name_list = update_name.split()
+
+            new_names = [name for name in name_list if name not in db_name]
+
+            UserName.objects.filter(event_id=event_id).delete()
+            referencias = []
+            for new_name in new_names:
                 try:
-                    serializer_user = CreateUserNameEvent(
-                        data={'name_id': referencia,
-                              'event_id': event_id,
-                              'create_order': order})
-                    if serializer_user.is_valid():
-                        serializer_user.save()
-                        order += 1
+                    name_obj = Names.objects.get(name=new_name)
+                    referencias.append(name_obj.id)
+                except Names.DoesNotExist:
+                    name_data = {"name": new_name}
+                    serializer = CreateNames(data=name_data)
+                    if serializer.is_valid():
+                        new_name_obj = serializer.save()
+                        referencias.append(new_name_obj.id)
                     else:
                         return JsonResponse({'success': False,
-                                             'message':
-                                             'Erro ao criar nome do usuário',
-                                             'error': serializer_user.errors},
+                                            'message': 'Erro ao criar novo nome',
+                                            'error': serializer.errors},
                                             status=status.HTTP_400_BAD_REQUEST)
-                except Exception:
-                    return JsonResponse({'success': False,
-                                         'message': 'Erro inesperado'},
-                                        status=status.HTTP_400_BAD_REQUEST)
 
-    return JsonResponse({"success": True,
-                         "message": "Evento atualizado com sucesso"},
-                        status=status.HTTP_200_OK)
+            order = 1
+            if referencias:
+                for referencia in referencias:
+                    try:
+                        serializer_user = CreateUserNameEvent(
+                            data={'name_id': referencia,
+                                'event_id': event_id,
+                                'create_order': order})
+                        if serializer_user.is_valid():
+                            serializer_user.save()
+                            order += 1
+                        else:
+                            return JsonResponse({'success': False,
+                                                'message':
+                                                'Erro ao criar nome do usuário',
+                                                'error': serializer_user.errors},
+                                                status=status.HTTP_400_BAD_REQUEST)
+                    except Exception:
+                        return JsonResponse({'success': False,
+                                            'message': 'Erro inesperado'},
+                                            status=status.HTTP_400_BAD_REQUEST)
+
+        return JsonResponse({"success": True,
+                            "message": "Evento atualizado com sucesso"},
+                            status=status.HTTP_200_OK)
 
 
 def create_names(name):

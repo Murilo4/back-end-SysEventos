@@ -44,6 +44,5 @@ def end_event(request, eventId):
                             status=status.HTTP_406_NOT_ACCEPTABLE)
     set_start.save()
     return JsonResponse({"success": True,
-                        "message": "Evento finalizado com sucesso"
-                        "eventId"},
+                        "message": "Evento finalizado com sucesso"},
                         status=status.HTTP_200_OK)

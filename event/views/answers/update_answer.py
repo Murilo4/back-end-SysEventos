@@ -2,18 +2,20 @@ from rest_framework.decorators import api_view
 from django.http import JsonResponse
 from rest_framework import status
 import os
-from models import Event, Plans, NormalUser, Questions, Subscription
+from ...models import Event, Plans, NormalUser, Questions, Subscription
+from ...models import EventAnswer, Answers
 import jwt
 from dotenv import load_dotenv
+from ...serializers.answer import CreateEventAnswer, CreateAnswer
 load_dotenv()
 SECRET_KEY = os.getenv('JWT_SECRET_KEY')
 
 
-@api_view(['POST'])
-def update_answer(request):
-    if request.method != "POST":
+@api_view(['PUT'])
+def update_answer(request, eventId, questionId):
+    if request.method != "PUT":
         return JsonResponse({"success": False,
-                             "message": "método invalido"},
+                             "message": "Método inválido"},
                             status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
     auth_header = request.headers.get('Authorization')
@@ -37,7 +39,7 @@ def update_answer(request):
                             status=status.HTTP_401_UNAUTHORIZED)
 
     user_id = payload.get('id')
-    event_id = request.data.get("eventId")
+    event_id = eventId
 
     try:
         event = Event.objects.get(id=event_id)
@@ -53,63 +55,88 @@ def update_answer(request):
                              "message": "Usuário não encontrado."},
                             status=status.HTTP_404_NOT_FOUND)
 
-    if user.user_type != "speaker":
-        return JsonResponse({"success": False,
-                             "message":
-                            "Você não tem permissão para editar a pergunta"},
-                            status=status.HTTP_400_BAD_REQUEST)
+    question_id = questionId
+    answers_data = request.data.get('answers', [])
 
-    question_id = request.data.get('questionId')
-    question = request.data.get("question", None)
-    # question_type = request.data.get("questionType", None)
-
-    existing_events = Event.objects.filter(
-        questions__id=question_id).exclude(id=event_id)
-
-    if existing_events.exists():
-
-        subscription = Subscription.objects.get(user=user_id)
-        plan = Plans.objects.get(subscription=subscription.id)
-
-        if plan.plan_name == "standard":
-            return JsonResponse({"success": False,
-                                 "message":
-                                "você não pode atualizar"},
-                                status=status.HTTP_403_FORBIDDEN)
-
-        new_event = Event.objects.create(
-            event_name=event.event_name,
-            description=event.description,
-            questions=question,
-            created_by=user,
-        )
-
-        return JsonResponse({"success": True,
-                             "message":
-                             "Evento duplicado e atualizado com sucesso",
-                             "new_event_id": new_event.id,
-                             "qr_code": "qr"},
-                            status=status.HTTP_200_OK)
-
+    # Verifica se a pergunta existe
     question_db = Questions.objects.filter(id=question_id).first()
-    if question_db:
-        get_event = Event.objects.get(id=event_id)
-        if question_db != get_event.event_creator:
-            subscription = Subscription.objects.get(user=user_id)
-            plan = Plans.objects.get(subscription=subscription.id)
-            if plan.plan_name == "standard":
-                return JsonResponse({"success": False,
-                                     "message":
-                                    "você não pode atualizar esta pergunta."},
-                                    status=status.HTTP_403_FORBIDDEN)
-            return JsonResponse({"success": True,
-                                 "message": "Evento atualizado com sucesso"},
-                                status=status.HTTP_200_OK)
-        return JsonResponse({"success": True,
-                             "message": "Evento atualizado com sucesso",
-                             "qr_code": "qr"},
-                            status=status.HTTP_200_OK)
-    else:
+    if not question_db:
         return JsonResponse({"success": False,
                              "message": "Pergunta não encontrada."},
                             status=status.HTTP_404_NOT_FOUND)
+
+    # Verifica se a pergunta pertence ao evento
+    if question_db.event != event_id:
+        try:
+            subscription = Subscription.objects.get(user=user_id)
+            plan = Plans.objects.get(id=subscription.plan.id)
+
+            if plan.plan_name == "standard":
+                return JsonResponse({"success": False,
+                                    "message": "Você não pode atualizar respostas com o plano Standard."},
+                                    status=status.HTTP_403_FORBIDDEN)
+        except:
+            return JsonResponse({"success": False,
+                                "message": "Você não pode atualizar respostas com o plano Standard."},
+                                status=status.HTTP_403_FORBIDDEN)
+
+    for answer_data in answers_data:
+        answer_option = answer_data.get('answer')
+        is_correct = answer_data.get('isCorrect')
+
+        # Verifica se a resposta já existe no banco de dados
+        existing_answer = Answers.objects.filter(answer_option=answer_option, is_correct=is_correct).first()
+
+        # Se a resposta já existir, verificar se está vinculada ao evento e à pergunta
+        if existing_answer:
+            # Verificar se a resposta já está associada a este evento e pergunta
+            existing_event_answer = EventAnswer.objects.filter(answer=existing_answer, event_id=event_id, question_id=question_db.id).first()
+            
+            if existing_event_answer:
+                # Se a resposta já está vinculada, ignoramos e passamos para a próxima
+                continue
+            else:
+                new_event_answer = {
+                    "answer": existing_answer.id,
+                    "event": event_id,
+                    "question": question_db.id
+                    }
+                
+                new_event_ans = CreateEventAnswer(data=new_event_answer)
+                if not new_event_ans.is_valid():
+                    return JsonResponse({"success": False, 
+                                         "message": "Erro ao criar nova resposta."}, 
+                                        status=status.HTTP_400_BAD_REQUEST)
+                new_event_ans.save()
+                continue
+        else:
+            # Se a resposta não existir, criamos uma nova resposta
+            new_answer_data = {
+                "answer_option": answer_option,
+                "is_correct": is_correct,
+                "question": question_db.id,
+                "event": event_id
+            }
+            serializer = CreateAnswer(data=new_answer_data)
+            if serializer.is_valid():
+                new_answer = serializer.save()
+                new_event = {
+                    "answer": new_answer.id,
+                    "event": event_id,
+                    "question": question_db.id
+                }
+                new_event_answer = CreateEventAnswer(data=new_event)
+                if not new_event_answer.is_valid():
+                    return JsonResponse({"success": False, 
+                                         "message": "Erro ao criar nova resposta."}, 
+                                        status=status.HTTP_400_BAD_REQUEST)
+                new_event_answer.save()
+            else:
+                return JsonResponse({"success": False, 
+                                     "message": "Erro ao criar nova resposta."}, 
+                                     status=status.HTTP_400_BAD_REQUEST)
+
+    return JsonResponse({"success": True, 
+                         "message": "Respostas atualizadas com sucesso!"}, 
+                         status=status.HTTP_200_OK)
+

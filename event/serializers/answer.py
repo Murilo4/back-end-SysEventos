@@ -31,3 +31,20 @@ class GetAllAnswer(serializers.ModelSerializer):
     class Meta:
         model = EventAnswer
         fields = ['id', 'answer', 'isCorrect']
+
+
+class UpdateAnswer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Answers
+        fields = ['answer_option', 'is_correct']
+
+    def update(self, instance, validated_data):
+        instance.answer_option = validated_data.get(
+            'answer_option', instance.answer_option)
+        instance.is_correct = validated_data.get(
+            'is_correct', instance.is_correct)
+
+        instance.save()
+
+        return instance

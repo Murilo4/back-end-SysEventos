@@ -28,7 +28,7 @@ def get_event(request, eventId):
     payload = jwt.decode(token,
                          SECRET_KEY, algorithms=['HS256'])
     user_id = payload.get('id')
-    user = NormalUser.objects.get(id=user_id)
+    NormalUser.objects.get(id=user_id)
 
     event_id = eventId
     event_bd = Event.objects.get(id=event_id)
@@ -51,6 +51,7 @@ def get_event(request, eventId):
         "horarioInicio": event_bd.horario_inicio,
         "horarioFinal": event_bd.horario_final,
         "description": event_bd.descricao,
+        "participants": event_bd.participantes,
         "photo": photo_url,
         "isActive": event_bd.is_active
     }

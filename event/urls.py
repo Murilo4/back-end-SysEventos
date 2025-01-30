@@ -29,6 +29,7 @@ from .views.questions.update_question import update_question
 from .views.questions.delete_question import delete_question
 from .views.questions.get_all_question import get_questions_and_answers
 from .views.answers.delete_answer import delete_answer
+from .views.answers.update_answer import update_answer
 from django.conf.urls.static import static
 from django.conf import settings
 
@@ -102,6 +103,8 @@ urlpatterns = [
 
     # answers
     path('delete-answer/<int:eventId>/<int:answerId>/',
-         delete_answer, name="delete_answer")
+         delete_answer, name="delete_answer"),
+    path('update-answers/<int:eventId>/<int:questionId>/',
+         update_answer, name="update-answers")
 
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

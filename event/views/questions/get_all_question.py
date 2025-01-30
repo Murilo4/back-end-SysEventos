@@ -61,32 +61,20 @@ def get_questions_and_answers(request, eventId):
     for quest_event in question_event_db:
         question_db = Questions.objects.get(id=quest_event.question.id)
 
-        # Debugging: Verifique se a pergunta está correta
-        print(f"Question: {question_db.question}")
-
-        # Buscar as respostas associadas à pergunta
         answer_event_db = EventAnswer.objects.filter(event=event_id,
                                                      question=question_db.id)
         answers = []
 
-        # Debugging: Verifique se existem respostas associadas à pergunta
-        print(f"Answer Event DB: {answer_event_db}")
-
         for answer_event in answer_event_db:
             answer_db = Answers.objects.get(id=answer_event.answer.id)
-            print(answer_db)
-            # Serializar as respostas
+
             answer_serializer = GetAllAnswer(answer_db)
             answers.append(answer_serializer.data)
 
-        # Serializar a pergunta
         question_serializer = GetAllQuestions(question_db)
         question_data = question_serializer.data
 
-        # Debugging: Verifique os dados da resposta
-        print(f"Answers: {answers}")
-
-        question_data['answers'] = answers  # Adicionar as respostas à pergunta
+        question_data['answers'] = answers
 
         response_data.append(question_data)
 
