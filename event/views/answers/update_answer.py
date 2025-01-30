@@ -128,15 +128,15 @@ def update_answer(request, eventId, questionId):
                 new_event_answer = CreateEventAnswer(data=new_event)
                 if not new_event_answer.is_valid():
                     return JsonResponse({"success": False, 
-                                         "message": "Erro ao criar nova resposta."}, 
+                                         "message": "Erro ao criar nova resposta."},
                                         status=status.HTTP_400_BAD_REQUEST)
                 new_event_answer.save()
             else:
                 return JsonResponse({"success": False, 
-                                     "message": "Erro ao criar nova resposta."}, 
+                                     "message": "Erro ao criar nova resposta."},
                                      status=status.HTTP_400_BAD_REQUEST)
 
-    return JsonResponse({"success": True, 
-                         "message": "Respostas atualizadas com sucesso!"}, 
+    return JsonResponse({"success": True,
+                         "message": "Respostas atualizadas com sucesso!"},
                          status=status.HTTP_200_OK)
 

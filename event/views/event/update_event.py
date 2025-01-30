@@ -127,8 +127,9 @@ def update_event(request, eventId):
                         referencias.append(new_name_obj.id)
                     else:
                         return JsonResponse({'success': False,
-                                            'message': 'Erro ao criar novo nome',
-                                            'error': serializer.errors},
+                                            'message':
+                                             'Erro ao criar novo nome',
+                                             'error': serializer.errors},
                                             status=status.HTTP_400_BAD_REQUEST)
 
             order = 1
@@ -137,17 +138,15 @@ def update_event(request, eventId):
                     try:
                         serializer_user = CreateUserNameEvent(
                             data={'name_id': referencia,
-                                'event_id': event_id,
-                                'create_order': order})
+                                  'event_id': event_id,
+                                  'create_order': order})
                         if serializer_user.is_valid():
                             serializer_user.save()
                             order += 1
                         else:
                             return JsonResponse({'success': False,
                                                 'message':
-                                                'Erro ao criar nome do usuário',
-                                                'error': serializer_user.errors},
-                                                status=status.HTTP_400_BAD_REQUEST)
+                                                 'Erro ao criar nome'})
                     except Exception:
                         return JsonResponse({'success': False,
                                             'message': 'Erro inesperado'},

@@ -27,6 +27,7 @@ from .views.event.get_event_and_questions import get_event_and_questions
 from .views.questions.create_question import create_question
 from .views.questions.update_question import update_question
 from .views.questions.delete_question import delete_question
+from .views.questions.update_question_photo import update_question_photo
 from .views.questions.get_all_question import get_questions_and_answers
 from .views.answers.delete_answer import delete_answer
 from .views.answers.update_answer import update_answer
@@ -100,6 +101,8 @@ urlpatterns = [
          update_question, name="update_question"),
     path('delete-question/<int:eventId>/<int:questionId>/',
          delete_question, name="delete_question"),
+    path("update-question-photo/<int:eventId>/<int:questionId>/",
+         update_question_photo, name="update_question_photo"),
 
     # answers
     path('delete-answer/<int:eventId>/<int:answerId>/',

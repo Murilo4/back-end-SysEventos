@@ -144,6 +144,8 @@ class Questions(models.Model):
     question = models.TextField()
     question_type = models.TextField()
     event = models.IntegerField()
+    photo = models.ImageField(upload_to='questions_photos/',
+                              null=True, blank=True)
 
     class Meta:
         managed = False

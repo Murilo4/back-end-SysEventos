@@ -43,6 +43,7 @@ def get_question(request):
     question = {
         "question": question,
         "questionType": question.question_type,
+        "photo": question.photo
     }
     return JsonResponse({"success": True,
                         "message": "pergunta criada com sucesso",

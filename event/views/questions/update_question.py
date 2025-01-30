@@ -111,10 +111,10 @@ def update_question(request, eventId, questionId):
                     event_answer.save()
 
                 # Apagar vínculo antigo da pergunta com o evento
-                event_question_to_delete = event.questions.filter(
+                event_question_delete = event.questions.filter(
                     id=question_id).first()
-                if event_question_to_delete:
-                    event_question_to_delete.delete()
+                if event_question_delete:
+                    event_question_delete.delete()
 
                 return JsonResponse({"success": True,
                                     "message":
@@ -157,8 +157,9 @@ def update_question(request, eventId, questionId):
                         }
                         new_event_question = CreateEventQuestions(
                             data=event_question_data)
-                        if not new_event_question.is_valid(raise_exception=True):
-                            raise Exception("Erro ao associar a pergunta ao evento.")
+                        if not new_event_question.is_valid(
+                                raise_exception=True):
+                            raise Exception("Erro ao associar a pergunta")
                         new_event_question.save()
 
                         # Vinculando as respostas antigas à nova pergunta
@@ -169,17 +170,15 @@ def update_question(request, eventId, questionId):
                             event_answer.save()
 
                         # Apagar vínculo antigo da pergunta com o evento
-                        event_question_to_delete = EventQuestions.objects.filter(
+                        event_question_delete = EventQuestions.objects.filter(
                             id=question_id).first()
-                        if event_question_to_delete:
-                            event_question_to_delete.delete()
+                        if event_question_delete:
+                            event_question_delete.delete()
                     except Exception:
                         return JsonResponse({"success": False,
                                             "message":
                                              "Você não pode atualizar"},
                                             status=status.HTTP_403_FORBIDDEN)
-
-                # Atualiza apenas a pergunta
                 question_update = {
                     "question": question,
                     "question_type": question_type
@@ -195,7 +194,6 @@ def update_question(request, eventId, questionId):
                         status=status.HTTP_400_BAD_REQUEST)
                 serializer.save()
 
-                # Não atualizamos as respostas, mas apenas vinculamos a pergunta
                 return JsonResponse({"success": True,
                                     "message":
                                      "Pergunta atualizada com sucesso!"},

@@ -63,11 +63,12 @@ def delete_question(request, eventId, questionId):
 
             if event_count == 1:
                 Answers.objects.filter(question=question).delete()
-
+                photo_path = question.photo.path if question.photo else None
+                if photo_path and os.path.exists(photo_path):
+                    os.remove(photo_path)
                 EventQuestions.objects.filter(
                     event=event, question=question).delete()
 
-                # Deleta a pergunta
                 question.delete()
                 return JsonResponse({'success': True,
                                      'message':
